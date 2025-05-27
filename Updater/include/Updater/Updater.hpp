@@ -35,37 +35,40 @@ static constexpr std::string_view UpdateArchiveFile(Edition edition)
 	return "";
 }
 
-class Updater : public QWidget
+/**
+ * @brief Legacy Updater class - DEPRECATED
+ * 
+ * This class is deprecated and maintained only for backward compatibility.
+ * New code should use ModernUpdater or UpdateOrchestrator directly.
+ * 
+ * @deprecated Use ModernUpdater instead
+ */
+class [[deprecated("Use ModernUpdater instead")]] Updater : public QWidget
 {
 	Q_OBJECT
 
 public:
+	// Legacy static API - delegated to ModernUpdater
 	static bool UpdateAvailable();
-
-	void Run();
-
-	// functions to start updater/main binary
 	static bool StartUpdater(std::string_view args = "");
 	static bool StartMain(std::string_view args = "");
-
 	static void RemoveTrash();
+	// Legacy instance methods - for compatibility with existing GUI code
+	void Run();
 
 private:
 	using Path = std::filesystem::path;
 
-	QNetworkReply* Download();
-
+	// Legacy methods - kept for internal compatibility
 	[[noreturn]] static void End(bool success = true, bool revert = false);
 
-	// functions to handle backup
+	// Legacy backup methods
 	static bool CreateBackup();
 	static bool RemoveBackup();
 	static bool RevertBackup();
-
-	// functions for executable/library renaming
 	static bool RenameToTrash();
 
-	// functions for paths
+	// Legacy path methods
 	static Path UpdateDest() { return std::filesystem::absolute(std::filesystem::current_path()); }
 	static Path BackupDest() { return Path(std::filesystem::temp_directory_path() / "PotatoAlertBackup"); }
 	static Path UpdateArchive() { return Path(std::filesystem::temp_directory_path() / UpdateArchiveFile(CurrentEdition)); }
@@ -76,7 +79,6 @@ private:
 		bool CanElevate;
 	};
 	static ElevationInfo GetElevationInfo();
-
 	static void WaitForOtherProcessExit();
 
 	constexpr static std::string_view m_updaterBinary = "PotatoUpdater.exe";

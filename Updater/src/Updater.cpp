@@ -1,5 +1,8 @@
 // Copyright 2021 <github.com/razaqq>
 
+#include "Updater/Updater.hpp"
+#include "Updater/ModernUpdater.hpp"
+
 #include "Core/Defer.hpp"
 #include "Core/Directory.hpp"
 #include "Core/Encoding.hpp"
@@ -11,12 +14,11 @@
 #include "Core/Version.hpp"
 #include "Core/Zip.hpp"
 
-#include "Updater/Updater.hpp"
-
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
+#include <QTimer>
 #include <QUrl>
 #include <QtNetwork>
 
@@ -29,25 +31,11 @@
 #include "tlhelp32.h"
 
 /*
- * CURRENT WAY:
- * Shut down main binary, start updater as admin
- * Download archive to temp
- * Create backup
- * Rename current files to .trash
- * Unpack archive into target
- * Restart main binary
- * Remove trash
- */
-
-/*
- * MAYBE BETTER:
- * Shut down main binary, start updater as admin
- * Download archive to temp
- * Create backup
- * Rename current files to .trash
- * Unpack archive into temp
- * MoveFile() to target location, on the same drive this is atomic
- * Restart main binary
+ * LEGACY IMPLEMENTATION - DEPRECATED
+ * 
+ * This file contains the legacy updater implementation for backward compatibility.
+ * The actual update logic has been moved to the new ModernUpdater architecture.
+ *  * Static methods delegate to ModernUpdater for consistency.
  */
 
 
@@ -85,92 +73,30 @@ std::optional<DWORD> FindProcessByName(LPCTSTR Name)
 
 }
 
-struct DownloadProgress
-{
-	void Reset()
-	{
-		m_bytesSinceTick = Q_INT64_C(0);
-		timer.restart();
-	}
-
-	void Update(qint64 bytesReceived)
-	{
-		if (!m_started)
-		{
-			m_started = true;
-			timer.start();
-		}
-
-		m_bytesSinceTick += bytesReceived;
-
-		if (timer.hasExpired(1e3))
-		{
-			m_speed = m_bytesSinceTick / 1e5f / timer.elapsed();  // MB/s
-
-			// convert to kilobyte in case we are slow
-			if (m_speed < 1.0f)
-			{
-				m_speed *= 1e3;
-				m_unit = "kB/s";
-			}
-			else
-			{
-				m_unit = "MB/s";
-			}
-
-			Reset();
-		}
-	}
-
-	[[nodiscard]] std::string ToString() const
-	{
-		return fmt::format("{:.1f} {}", m_speed, m_unit);
-	}
-
-private:
-	QElapsedTimer timer;
-	bool m_started = false;
-	float m_speed = 0.0f;
-	const char* m_unit = "MB/s";
-	qint64 m_bytesSinceTick = Q_INT64_C(0);
-} g_downloadProgress;
-
 // makes a request to the github api and checks if there is a new version available
 bool Updater::UpdateAvailable()
 {
-#ifndef NDEBUG
-	return false;
-#endif
+	// Delegate to ModernUpdater
+	return ModernUpdater::UpdateAvailable();
+}
 
-	QEventLoop loop;
-	QNetworkAccessManager* manager = new QNetworkAccessManager();
+// Legacy static methods now delegate to ModernUpdater
+bool Updater::StartUpdater(std::string_view args)
+{
+	// Delegate to ModernUpdater
+	return ModernUpdater::StartUpdater(args);
+}
 
-	QNetworkRequest request;
-	request.setUrl(QUrl(std::string(g_versionURL).c_str()));
-	request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-	QNetworkReply* reply = manager->get(request);
-	connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-	loop.exec();
+bool Updater::StartMain(std::string_view args)
+{
+	// Delegate to ModernUpdater
+	return ModernUpdater::StartMain(args);
+}
 
-	if (reply->error() != QNetworkReply::NoError)
-	{
-		LOG_ERROR("Network reply for update failed: {}", reply->errorString().toStdString());
-		return false;
-	}
-
-	PA_TRY_OR_ELSE(json, ParseJson(reply->readAll().toStdString()),
-	{
-		LOG_ERROR("Failed to parse github api response as JSON.");
-		return false;
-	});
-
-	if (!json.HasMember("tag_name"))
-	{
-		LOG_ERROR("Github response is missing key 'tag_name'");
-		return false;
-	}
-
-	return Version(FromJson<std::string>(json["tag_name"])) > Version(QApplication::applicationVersion().toStdString());
+void Updater::RemoveTrash()
+{
+	// Delegate to ModernUpdater
+	ModernUpdater::RemoveTrash();
 }
 
 // starts the update process
@@ -178,124 +104,96 @@ void Updater::Run()
 {
 	LOG_INFO("Starting update...");
 
-	if (!GetElevationInfo().IsElevated)
+	// Delegate to ModernUpdater for the actual update logic
+	try
 	{
-		LOG_ERROR("Updater needs to be started with admin privileges.");
+		auto modernUpdater = std::make_shared<ModernUpdater>();
+				// Set up progress callback to emit legacy signals
+		modernUpdater->SetProgressCallback([this](const ProgressInfo& progress) {
+			if (progress.BytesDownloaded.has_value() && progress.TotalBytes.has_value()) {
+				QString progressStr = QString("%1/%2 MB").arg(
+					QString::number(progress.BytesDownloaded.value() / 1e6, 'f', 1),
+					QString::number(progress.TotalBytes.value() / 1e6, 'f', 1)
+				);
+				
+				QString speedStr = "0 MB/s";
+				if (progress.DownloadSpeedBytesPerSecond.has_value()) {
+					speedStr = QString("%1 MB/s").arg(
+						QString::number(progress.DownloadSpeedBytesPerSecond.value() / 1e6, 'f', 1)
+					);
+				}
+				
+				int percentage = static_cast<int>(progress.GetProgressPercent());
+				emit DownloadProgress(percentage, progressStr, speedStr);
+			}
+		});
+		// Set up error callback
+		modernUpdater->SetErrorCallback([this](const UpdateError& error) {
+			LOG_ERROR("Update failed: {}", error.Message);
+			End(false);
+		});
+
+		// Run the update asynchronously
+		auto future = modernUpdater->RunUpdateAsync();
+		
+		// Wait for completion in a Qt-compatible way
+		QTimer timer;
+		QEventLoop loop;
+		
+		timer.setSingleShot(true);
+		timer.setInterval(100); // Check every 100ms
+		
+		connect(&timer, &QTimer::timeout, [&]() {
+			if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+				try {
+					UpdateResult result = future.get();
+					bool success = (result == UpdateResult::Success);
+					loop.quit();
+					End(success);
+				} catch (const std::exception& e) {
+					LOG_ERROR("Update failed with exception: {}", e.what());
+					loop.quit();
+					End(false);
+				}
+			} else {
+				timer.start(); // Continue checking
+			}
+		});
+		
+		timer.start();
+		loop.exec(); // This will block until the update completes
+	}
+	catch (const std::exception& e)
+	{
+		LOG_ERROR("Failed to initialize modern updater: {}", e.what());
 		End(false);
 	}
-
-	LOG_INFO("Starting download...");
-	QNetworkReply* reply = Download();
-	// TODO: get g_updateURL dynamically from repo
-	// TODO: maybe do some checksum check on the downloaded archive
-
-	connect(reply, &QNetworkReply::finished, [reply]()
-	{
-		// check if there was an error with the download
-		if (reply->error() != QNetworkReply::NoError)
-		{
-			LOG_ERROR("Failed to download update: {}", reply->errorString().toStdString());
-			End(false);
-		}
-
-		LOG_INFO("Update download successful.");
-
-		const Path archive = UpdateArchive();
-		const Path dest = UpdateDest();
-
-		if (QFile* file = new QFile(archive); file->open(QFile::WriteOnly))
-		{
-			file->write(reply->readAll());
-			file->flush();
-			file->close();
-			LOG_INFO(STR("Update archive saved successfully in {}"), Updater::UpdateArchive());
-		}
-		else
-		{
-			LOG_ERROR("Failed to Save update reply to file.");
-			End(false);
-		}
-
-		// make backup
-		if (!CreateBackup())
-			End(false);
-
-		// rename exe/dll to trash
-		if (!RenameToTrash())
-		{
-			LOG_ERROR("Failed to rename exe/dll to trash.");
-			End(false, true);
-		}
-
-		// Unpack archive
-		LOG_INFO(STR("Extracting archive {} to {}"), archive, dest);
-
-		const Zip zip = Zip::Open(archive, 0);
-		if (!zip)
-		{
-			LOG_ERROR("Failed to open zip file: ");
-			End(false, true);
-		}
-
-		int totalEntries = zip.EntryCount();
-		int i = 0;
-		auto onExtract = [dest, &i, totalEntries](const char* fileName) -> int
-		{
-			LOG_INFO(STR("Extracted: {} ({}/{})"), fs::relative(fileName, dest), ++i, totalEntries);
-			return 0;
-		};
-
-		if (!Zip::Extract(archive, dest, onExtract))
-		{
-			LOG_ERROR("Failed to Unpack archive.");
-			End(false, true);
-		}
-
-		LOG_INFO("Update complete!");
-		End(true);
-	});
 }
 
-// downloads the update archive
-QNetworkReply* Updater::Download()
+// Legacy static methods now delegate to ModernUpdater
+bool Updater::StartUpdater(std::string_view args)
 {
-	QNetworkAccessManager* manager = new QNetworkAccessManager();
-
-	QNetworkRequest request;
-	request.setUrl(QUrl(fmt::format(g_updateURL, UpdateArchiveFile(CurrentEdition)).c_str()));
-	request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-	auto reply = manager->get(request);
-
-	connect(reply, &QNetworkReply::downloadProgress, [this](qint64 bytesReceived, qint64 bytesTotal)
-	{
-		if (bytesTotal == 0)
-			return;
-
-		g_downloadProgress.Update(bytesReceived);
-
-		const QString progress = fmt::format("{:.1f}/{:.1f} MB", bytesReceived / 1e6f, bytesTotal / 1e6f).c_str();
-		const QString speedStr = QString::fromStdString(g_downloadProgress.ToString());
-		emit DownloadProgress(static_cast<int>(bytesReceived * 100 / bytesTotal), progress, speedStr);
-	});
-
-	connect(reply, &QNetworkReply::sslErrors, [reply](const QList<QSslError>&)
-	{
-		LOG_ERROR(reply->errorString().toStdString());
-		End(false);
-	});
-
-	connect(reply, &QNetworkReply::errorOccurred, [reply](QNetworkReply::NetworkError)
-	{
-		LOG_ERROR(reply->errorString().toStdString());
-		End(false);
-	});
-
-	return reply;
+	// Delegate to ModernUpdater
+	return ModernUpdater::StartUpdater(args);
 }
 
-// restarts the application
-void Updater::End(bool success, bool revert)
+bool Updater::StartMain(std::string_view args)
 {
+	// Delegate to ModernUpdater
+	return ModernUpdater::StartMain(args);
+}
+
+void Updater::RemoveTrash()
+{
+	// Delegate to ModernUpdater
+	ModernUpdater::RemoveTrash();
+}
+
+// Legacy helper methods - kept for internal use by End() method
+[[noreturn]] void Updater::End(bool success, bool revert)
+{
+	// Note: These backup methods and WaitForOtherProcessExit are kept as legacy
+	// until the backup functionality is fully integrated into the new architecture
 	if (revert)
 		RevertBackup();
 	RemoveBackup();
@@ -437,49 +335,6 @@ bool Updater::RenameToTrash()
 		}
 	}
 	return true;
-}
-
-// deletes all .trash files
-void Updater::RemoveTrash()
-{
-	LOG_INFO("Clearing trash of old version.");
-
-	// have to wait, otherwise some dlls are still locked by the other process
-	WaitForOtherProcessExit();
-
-	std::error_code ec;
-	auto it = fs::recursive_directory_iterator(UpdateDest(), ec);
-	if (ec)
-	{
-		LOG_ERROR("Failed to get directory iterator: {}", ec);
-		return;
-	}
-
-	for (auto& p : it)
-	{
-		const bool regularFile = p.is_regular_file(ec);
-		if (ec)
-			LOG_ERROR("Failed to check if {} is regular file: {}", p.path(), ec);
-
-		if (regularFile && p.path().extension().string() == ".trash")
-		{
-			fs::remove(p, ec);
-			if (ec)
-				LOG_ERROR("Failed to remove file {}: {}", p.path(), ec);
-		}
-	}
-}
-
-bool Updater::StartUpdater(std::string_view args)
-{
-	LOG_INFO("Restarting updater binary.");
-	return CreateNewProcess(m_updaterBinary, args, true);
-}
-
-bool Updater::StartMain(std::string_view args)
-{
-	LOG_INFO("Restarting main binary.");
-	return CreateNewProcess(m_mainBinary, args, false);
 }
 
 void Updater::WaitForOtherProcessExit()
