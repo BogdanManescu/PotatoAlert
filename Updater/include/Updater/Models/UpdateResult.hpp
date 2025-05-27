@@ -22,15 +22,12 @@ enum class UpdateResult
     RollbackFailed,
     Cancelled,
     InvalidConfiguration,
-    UnknownError,
-    ParseError,
+    UnknownError,    ParseError,
     NoUpdateAvailable,
     AssetNotFound,
     OperationInProgress,
     InternalError,
-    FileSystemError,
-    FileSystemError,
-    NetworkError
+    FileSystemError
 };
 
 enum class FilePermissions
