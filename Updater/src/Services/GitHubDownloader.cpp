@@ -378,5 +378,3 @@ void GitHubDownloader::SetDownloadResult(UpdateResult result)
         m_downloadState.reset();
     }
 }
-
-#include "GitHubDownloader.moc"

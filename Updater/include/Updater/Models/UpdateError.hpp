@@ -4,11 +4,12 @@
 #include "UpdateResult.hpp"
 
 #include <string>
+#include <chrono>
+#include <exception>
+#include <optional>
 
 
 namespace PotatoAlert::Updater {
-
-class UpdateError;
 
 class UpdateError
 {

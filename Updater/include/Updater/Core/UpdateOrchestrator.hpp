@@ -1,11 +1,10 @@
 // Copyright 2024 <github.com/razaqq>
 #pragma once
 
-#include "Updater/Models/UpdateResult.hpp"
+#include "Updater/Models/UpdateError.hpp"
 #include "Updater/Models/UpdateInfo.hpp"
 #include "Updater/Models/UpdateConfiguration.hpp"
 #include "Updater/Models/ProgressInfo.hpp"
-#include "Updater/Models/UpdateError.hpp"
 
 #include "Updater/Interfaces/IDownloader.hpp"
 #include "Updater/Interfaces/IFileManager.hpp"

@@ -49,30 +49,4 @@ enum class UpdateState
     Failed
 };
 
-class UpdateError
-{
-public:
-    UpdateResult Code;
-    std::string Message;
-    std::string TechnicalDetails;
-    std::optional<std::exception_ptr> Exception;
-    std::chrono::system_clock::time_point Timestamp;
-
-    UpdateError(UpdateResult code, std::string message, std::string technicalDetails = "")
-        : Code(code)
-        , Message(std::move(message))
-        , TechnicalDetails(std::move(technicalDetails))
-        , Timestamp(std::chrono::system_clock::now())
-    {
-    }
-
-    UpdateError(UpdateResult code, std::string message, std::exception_ptr exception)
-        : Code(code)
-        , Message(std::move(message))
-        , Exception(exception)
-        , Timestamp(std::chrono::system_clock::now())
-    {
-    }
-};
-
 }  // namespace PotatoAlert::Updater

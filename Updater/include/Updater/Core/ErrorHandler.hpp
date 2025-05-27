@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Updater/Models/UpdateError.hpp"
-#include "Updater/Models/UpdateResult.hpp"
 
 #include <functional>
 #include <memory>
