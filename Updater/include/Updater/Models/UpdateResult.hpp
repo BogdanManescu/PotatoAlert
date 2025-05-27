@@ -16,8 +16,7 @@ enum class UpdateResult
     NetworkError,
     VerificationFailed,
     InsufficientPrivileges,
-    DiskSpaceError,
-    BackupFailed,
+    DiskSpaceError,    BackupFailed,
     InstallationFailed,
     RollbackSucceeded,
     RollbackFailed,
@@ -28,7 +27,10 @@ enum class UpdateResult
     NoUpdateAvailable,
     AssetNotFound,
     OperationInProgress,
-    InternalError
+    InternalError,
+    FileSystemError,
+    FileSystemError,
+    NetworkError
 };
 
 enum class FilePermissions

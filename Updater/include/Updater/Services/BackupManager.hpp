@@ -3,6 +3,7 @@
 
 #include "Updater/Interfaces/IBackupManager.hpp"
 #include "Updater/Interfaces/IProgressReporter.hpp"
+#include "Updater/Models/BackupConfiguration.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -36,18 +37,15 @@ public:
         const std::filesystem::path& backupLocation) override;
 
     std::vector<BackupInfo> ListBackups(
-        const std::filesystem::path& backupDirectory) override;
-
-    UpdateResult CleanupOldBackups(
+        const std::filesystem::path& backupDirectory) override;    UpdateResult CleanupOldBackups(
         const std::filesystem::path& backupDirectory, 
         std::size_t keepCount) override;
 
-    std::future<UpdateResult> CleanupOldBackups(
-        const std::filesystem::path& backupRootDir,
-        size_t maxBackups) override;
+    std::uint64_t GetBackupSize(
+        const std::filesystem::path& backupLocation) override;
 
-    std::vector<BackupInfo> ListBackups(
-        const std::filesystem::path& backupRootDir) const override;
+    bool IsValidBackup(
+        const std::filesystem::path& backupLocation) override;
 
     UpdateResult GetLastError() const override;
 

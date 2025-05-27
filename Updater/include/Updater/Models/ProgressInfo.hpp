@@ -12,9 +12,13 @@ namespace PotatoAlert::Updater {
 
 class ProgressInfo
 {
-public:
-    UpdateState CurrentState = UpdateState::Idle;
+public:    UpdateState CurrentState = UpdateState::Idle;
     std::string StatusMessage;
+    
+    // Additional fields used by implementation
+    std::string Stage;
+    std::string Message;
+    double Progress = 0.0;
     
     // Download progress
     std::optional<std::uint64_t> BytesDownloaded;

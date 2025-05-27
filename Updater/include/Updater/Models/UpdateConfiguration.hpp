@@ -15,11 +15,11 @@ namespace PotatoAlert::Updater {
 
 class UpdateConfiguration
 {
-public:
-    // Update sources
+public:    // Update sources
     std::string UpdateUrl = "https://github.com/razaqq/PotatoAlert/releases/latest/download/{}";
     std::string VersionCheckUrl = "https://api.github.com/repos/razaqq/PotatoAlert/releases/latest";
     UpdateChannel Channel = UpdateChannel::Stable;
+    Platform Platform = Platform::Windows;  // Default platform
     
     // Download settings
     std::optional<std::size_t> MaxDownloadSpeedBytesPerSecond;  // No limit if not set

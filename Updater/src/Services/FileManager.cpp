@@ -33,69 +33,57 @@ void FileManager::SetProgressReporter(std::shared_ptr<IProgressReporter> reporte
     m_progressReporter = reporter;
 }
 
-std::future<UpdateResult> FileManager::CopyFile(
+UpdateResult FileManager::CopyFile(
     const std::filesystem::path& source,
     const std::filesystem::path& destination)
 {
-    return std::async(std::launch::async, [this, source, destination]() {
-        return CopyFileInternal(source, destination);
-    });
+    return CopyFileInternal(source, destination);
 }
 
-std::future<UpdateResult> FileManager::MoveFile(
+UpdateResult FileManager::MoveFile(
     const std::filesystem::path& source,
     const std::filesystem::path& destination)
 {
-    return std::async(std::launch::async, [this, source, destination]() {
-        return MoveFileInternal(source, destination);
+    return MoveFileInternal(source, destination);
+}
     });
 }
 
-std::future<UpdateResult> FileManager::DeleteFile(const std::filesystem::path& filePath)
+UpdateResult FileManager::DeleteFile(const std::filesystem::path& filePath)
 {
-    return std::async(std::launch::async, [this, filePath]() {
-        return DeleteFileInternal(filePath);
-    });
+    return DeleteFileInternal(filePath);
 }
 
-std::future<UpdateResult> FileManager::CreateDirectory(const std::filesystem::path& dirPath)
+UpdateResult FileManager::CreateDirectory(const std::filesystem::path& dirPath)
 {
-    return std::async(std::launch::async, [this, dirPath]() {
-        return CreateDirectoryInternal(dirPath);
-    });
+    return CreateDirectoryInternal(dirPath);
 }
 
-std::future<UpdateResult> FileManager::DeleteDirectory(const std::filesystem::path& dirPath)
+UpdateResult FileManager::DeleteDirectory(const std::filesystem::path& dirPath)
 {
-    return std::async(std::launch::async, [this, dirPath]() {
-        return DeleteDirectoryInternal(dirPath);
-    });
+    return DeleteDirectoryInternal(dirPath);
 }
 
-std::future<UpdateResult> FileManager::ExtractArchive(
+UpdateResult FileManager::ExtractArchive(
     const std::filesystem::path& archivePath,
     const std::filesystem::path& destination)
 {
-    return std::async(std::launch::async, [this, archivePath, destination]() {
-        return ExtractArchiveInternal(archivePath, destination);
-    });
+    return ExtractArchiveInternal(archivePath, destination);
 }
 
-std::future<UpdateResult> FileManager::SetFilePermissions(
+UpdateResult FileManager::SetFilePermissions(
     const std::filesystem::path& filePath,
     FilePermissions permissions)
 {
-    return std::async(std::launch::async, [this, filePath, permissions]() {
-        return SetFilePermissionsInternal(filePath, permissions);
-    });
+    return SetFilePermissionsInternal(filePath, permissions);
 }
 
-std::future<UpdateResult> FileManager::ReplaceExecutableFiles(
+UpdateResult FileManager::ReplaceExecutableFiles(
     const std::filesystem::path& sourceDir,
     const std::filesystem::path& targetDir)
 {
-    return std::async(std::launch::async, [this, sourceDir, targetDir]() {
-        return ReplaceExecutableFilesInternal(sourceDir, targetDir);
+    return ReplaceExecutableFilesInternal(sourceDir, targetDir);
+}
     });
 }
 

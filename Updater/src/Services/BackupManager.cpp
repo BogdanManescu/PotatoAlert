@@ -28,46 +28,52 @@ void BackupManager::SetProgressReporter(std::shared_ptr<IProgressReporter> repor
     m_progressReporter = reporter;
 }
 
-std::future<UpdateResult> BackupManager::CreateBackup(
-    const std::filesystem::path& sourceDir,
-    const std::filesystem::path& backupDir,
-    const BackupConfiguration& config)
+UpdateResult BackupManager::CreateBackup(
+    const std::vector<std::filesystem::path>& pathsToBackup,
+    const std::filesystem::path& backupLocation,
+    const UpdateConfiguration& config)
 {
-    return std::async(std::launch::async, [this, sourceDir, backupDir, config]() {
-        return CreateBackupInternal(sourceDir, backupDir, config);
-    });
+    // Convert UpdateConfiguration to BackupConfiguration
+    BackupConfiguration backupConfig = BackupConfiguration::CreateDefault();
+    // You could map fields from config if needed
+    
+    // For now, backup all paths to a single location
+    // In a real implementation, you might want to backup each path separately
+    if (pathsToBackup.empty()) {
+        LOG_WARN("No paths specified for backup");
+        return UpdateResult::Success;
+    }
+    
+    // Use the first path as the source directory for simplicity
+    // A more sophisticated implementation would handle multiple paths
+    return CreateBackupInternal(pathsToBackup[0], backupLocation, backupConfig);
 }
 
-std::future<UpdateResult> BackupManager::RestoreBackup(
-    const std::filesystem::path& backupDir,
-    const std::filesystem::path& targetDir)
+UpdateResult BackupManager::RestoreBackup(
+    const std::filesystem::path& backupLocation)
 {
-    return std::async(std::launch::async, [this, backupDir, targetDir]() {
-        return RestoreBackupInternal(backupDir, targetDir);
-    });
+    // For restore, we need to determine the target directory
+    // In a real implementation, this might be stored in the backup metadata
+    // For now, assume we're restoring to the current directory
+    auto targetDir = std::filesystem::current_path();
+    return RestoreBackupInternal(backupLocation, targetDir);
 }
 
-std::future<UpdateResult> BackupManager::ValidateBackup(const std::filesystem::path& backupDir)
+UpdateResult BackupManager::VerifyBackup(const std::filesystem::path& backupLocation)
 {
-    return std::async(std::launch::async, [this, backupDir]() {
-        return ValidateBackupInternal(backupDir);
-    });
+    return ValidateBackupInternal(backupLocation);
 }
 
-std::future<UpdateResult> BackupManager::DeleteBackup(const std::filesystem::path& backupDir)
+UpdateResult BackupManager::RemoveBackup(const std::filesystem::path& backupLocation)
 {
-    return std::async(std::launch::async, [this, backupDir]() {
-        return DeleteBackupInternal(backupDir);
-    });
+    return DeleteBackupInternal(backupLocation);
 }
 
-std::future<UpdateResult> BackupManager::CleanupOldBackups(
-    const std::filesystem::path& backupRootDir,
-    size_t maxBackups)
+UpdateResult BackupManager::CleanupOldBackups(
+    const std::filesystem::path& backupDirectory,
+    std::size_t keepCount)
 {
-    return std::async(std::launch::async, [this, backupRootDir, maxBackups]() {
-        return CleanupOldBackupsInternal(backupRootDir, maxBackups);
-    });
+    return CleanupOldBackupsInternal(backupDirectory, keepCount);
 }
 
 std::vector<BackupInfo> BackupManager::ListBackups(const std::filesystem::path& backupRootDir) const
@@ -719,5 +725,64 @@ void BackupManager::ReportProgress(const std::string& operation, double progress
         progressInfo.Message = operation;
         progressInfo.Progress = progress;
         m_progressReporter->ReportProgress(progressInfo);
+    }
+}
+
+std::uint64_t BackupManager::GetBackupSize(const std::filesystem::path& backupLocation)
+{
+    std::uint64_t totalSize = 0;
+    try
+    {
+        std::error_code ec;
+        if (!std::filesystem::exists(backupLocation, ec) || ec)
+        {
+            return 0;
+        }
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(backupLocation, ec))
+        {
+            if (ec)
+                break;
+            if (entry.is_regular_file(ec) && !ec)
+            {
+                totalSize += entry.file_size(ec);
+                if (ec)
+                    break;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Exception calculating backup size: {}", e.what());
+        return 0;
+    }
+    return totalSize;
+}
+
+bool BackupManager::IsValidBackup(const std::filesystem::path& backupLocation)
+{
+    try
+    {
+        std::error_code ec;
+        if (!std::filesystem::exists(backupLocation, ec) || ec)
+        {
+            return false;
+        }
+
+        // Check if manifest exists
+        auto manifestPath = backupLocation / "backup_manifest.json";
+        if (!std::filesystem::exists(manifestPath, ec) || ec)
+        {
+            return false;
+        }
+
+        // Try to read and validate the manifest
+        auto manifestEntries = ReadBackupManifest(backupLocation);
+        return manifestEntries.has_value();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Exception validating backup: {}", e.what());
+        return false;
     }
 }

@@ -25,8 +25,8 @@ public:
     std::string Checksum;
     std::string ChecksumAlgorithm = "SHA256";
     std::string SignatureUrl;
-    UpdateChannel Channel = UpdateChannel::Stable;
-    std::chrono::system_clock::time_point ReleaseDate;
+    UpdateChannel Channel = UpdateChannel::Stable;    std::chrono::system_clock::time_point ReleaseDate;
+    std::string PublishedAt;  // Additional field for published date string
     bool IsSecurityUpdate = false;
     bool IsCriticalUpdate = false;
     std::vector<std::string> Dependencies;

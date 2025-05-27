@@ -5,11 +5,14 @@
 #include "Updater/Models/UpdateConfiguration.hpp"
 
 #include <filesystem>
-#include <vector>
+#include <memory>
 #include <string>
+#include <vector>
 
 
 namespace PotatoAlert::Updater {
+
+class IProgressReporter;
 
 struct BackupInfo
 {
@@ -19,12 +22,19 @@ struct BackupInfo
     std::uint64_t Size;
     std::string Checksum;
     bool IsCompressed = false;
+    
+    // Additional fields used by implementation
+    std::string BackupName;
+    std::uint64_t BackupSize;
 };
 
 class IBackupManager
 {
 public:
     virtual ~IBackupManager() = default;
+
+    // Progress reporting
+    virtual void SetProgressReporter(std::shared_ptr<IProgressReporter> reporter) = 0;
 
     // Create backup of specified files/directories
     virtual UpdateResult CreateBackup(
@@ -49,9 +59,11 @@ public:
     
     // Get backup size
     virtual std::uint64_t GetBackupSize(const std::filesystem::path& backupLocation) = 0;
-    
-    // Check if backup exists and is valid
+      // Check if backup exists and is valid
     virtual bool IsValidBackup(const std::filesystem::path& backupLocation) = 0;
+    
+    // Get last error
+    virtual UpdateResult GetLastError() const = 0;
 };
 
 }  // namespace PotatoAlert::Updater
