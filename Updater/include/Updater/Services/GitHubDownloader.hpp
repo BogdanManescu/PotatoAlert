@@ -3,12 +3,14 @@
 
 #include "Updater/Interfaces/IDownloader.hpp"
 #include "Updater/Models/DownloadProgress.hpp"
+#include "Updater/Models/UpdateInfo.hpp"
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTimer>
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <mutex>
 
@@ -56,9 +58,7 @@ private:
     std::optional<UpdateInfo> ParseGitHubApiResponse(const QByteArray& data, const UpdateConfiguration& config);
     UpdateResult ValidateDownload(const std::filesystem::path& filePath, const UpdateInfo& updateInfo);
     void SetupNetworkRequest(QNetworkRequest& request, const UpdateConfiguration& config);
-    std::string FormatBytes(std::uint64_t bytes);
-
-    // Member variables
+    std::string FormatBytes(std::uint64_t bytes);    // Member variables
     std::unique_ptr<QNetworkAccessManager> m_networkManager;
     std::shared_ptr<IProgressReporter> m_progressReporter;
     
@@ -66,6 +66,9 @@ private:
     std::atomic<bool> m_downloading{false};
     
     std::unique_ptr<QTimer> m_speedUpdateTimer;
+    qint64 m_lastBytesReceived{0};
+    std::chrono::steady_clock::time_point m_downloadStartTime;
+    DownloadState* m_downloadState{nullptr};
     
     mutable std::mutex m_stateMutex;
 };

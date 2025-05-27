@@ -2,8 +2,11 @@
 #pragma once
 
 #include "Updater/Interfaces/IBackupManager.hpp"
+#include "Updater/Interfaces/IProgressReporter.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -15,25 +18,29 @@ class BackupManager : public IBackupManager
 {
 public:
     BackupManager();
-    ~BackupManager() override = default;
-
-    // IBackupManager implementation
+    ~BackupManager() override = default;    // IBackupManager implementation
     void SetProgressReporter(std::shared_ptr<IProgressReporter> reporter) override;
 
-    std::future<UpdateResult> CreateBackup(
-        const std::filesystem::path& sourceDir,
-        const std::filesystem::path& backupDir,
-        const BackupConfiguration& config) override;
+    UpdateResult CreateBackup(
+        const std::vector<std::filesystem::path>& pathsToBackup,
+        const std::filesystem::path& backupLocation,
+        const UpdateConfiguration& config) override;
 
-    std::future<UpdateResult> RestoreBackup(
-        const std::filesystem::path& backupDir,
-        const std::filesystem::path& targetDir) override;
+    UpdateResult RestoreBackup(
+        const std::filesystem::path& backupLocation) override;
 
-    std::future<UpdateResult> ValidateBackup(
-        const std::filesystem::path& backupDir) override;
+    UpdateResult VerifyBackup(
+        const std::filesystem::path& backupLocation) override;
 
-    std::future<UpdateResult> DeleteBackup(
-        const std::filesystem::path& backupDir) override;
+    UpdateResult RemoveBackup(
+        const std::filesystem::path& backupLocation) override;
+
+    std::vector<BackupInfo> ListBackups(
+        const std::filesystem::path& backupDirectory) override;
+
+    UpdateResult CleanupOldBackups(
+        const std::filesystem::path& backupDirectory, 
+        std::size_t keepCount) override;
 
     std::future<UpdateResult> CleanupOldBackups(
         const std::filesystem::path& backupRootDir,

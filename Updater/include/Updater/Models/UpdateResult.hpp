@@ -23,7 +23,20 @@ enum class UpdateResult
     RollbackFailed,
     Cancelled,
     InvalidConfiguration,
-    UnknownError
+    UnknownError,
+    ParseError,
+    NoUpdateAvailable,
+    AssetNotFound,
+    OperationInProgress,
+    InternalError
+};
+
+enum class FilePermissions
+{
+    ReadOnly = 0x444,
+    ReadWrite = 0x644,
+    Execute = 0x755,
+    All = 0x777
 };
 
 enum class UpdateChannel

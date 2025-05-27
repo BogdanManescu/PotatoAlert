@@ -2,6 +2,7 @@
 #pragma once
 
 #include "UpdateResult.hpp"
+#include "Updater/Interfaces/IPlatformManager.hpp"
 
 #include <chrono>
 #include <cstdint>

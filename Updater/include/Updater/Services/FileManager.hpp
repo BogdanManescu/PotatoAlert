@@ -2,8 +2,10 @@
 #pragma once
 
 #include "Updater/Interfaces/IFileManager.hpp"
+#include "Updater/Interfaces/IProgressReporter.hpp"
 
 #include <filesystem>
+#include <future>
 #include <memory>
 #include <mutex>
 
@@ -14,49 +16,59 @@ class FileManager : public IFileManager
 {
 public:
     FileManager();
-    ~FileManager() override = default;
-
-    // IFileManager implementation
-    void SetProgressReporter(std::shared_ptr<IProgressReporter> reporter) override;
-
-    std::future<UpdateResult> CopyFile(
+    ~FileManager() override = default;    // IFileManager implementation
+    UpdateResult CopyFile(
         const std::filesystem::path& source,
         const std::filesystem::path& destination) override;
 
-    std::future<UpdateResult> MoveFile(
+    UpdateResult MoveFile(
         const std::filesystem::path& source,
         const std::filesystem::path& destination) override;
 
-    std::future<UpdateResult> DeleteFile(
-        const std::filesystem::path& filePath) override;
+    UpdateResult DeleteFile(
+        const std::filesystem::path& path) override;
 
-    std::future<UpdateResult> CreateDirectory(
-        const std::filesystem::path& dirPath) override;
+    UpdateResult CreateDirectory(
+        const std::filesystem::path& path) override;
 
-    std::future<UpdateResult> DeleteDirectory(
-        const std::filesystem::path& dirPath) override;
+    UpdateResult DeleteDirectory(
+        const std::filesystem::path& path,
+        bool recursive = false) override;
 
-    std::future<UpdateResult> ExtractArchive(
-        const std::filesystem::path& archivePath,
+    UpdateResult AtomicReplace(
+        const std::filesystem::path& source,
+        const std::filesystem::path& target) override;
+
+    bool FileExists(const std::filesystem::path& path) override;
+    bool DirectoryExists(const std::filesystem::path& path) override;
+    std::uint64_t GetFileSize(const std::filesystem::path& path) override;
+    std::string CalculateFileChecksum(
+        const std::filesystem::path& path,
+        const std::string& algorithm = "SHA256") override;
+
+    UpdateResult CopyDirectory(
+        const std::filesystem::path& source,
+        const std::filesystem::path& destination,
+        bool overwrite = false) override;
+
+    std::vector<std::filesystem::path> ListDirectory(
+        const std::filesystem::path& path,
+        bool recursive = false) override;
+
+    UpdateResult RenameToTrash(
+        const std::filesystem::path& path) override;
+
+    UpdateResult CleanupTrash(
+        const std::filesystem::path& directory) override;
+
+    UpdateResult ExtractArchive(
+        const std::filesystem::path& archive,
         const std::filesystem::path& destination) override;
 
-    std::future<UpdateResult> SetFilePermissions(
-        const std::filesystem::path& filePath,
-        FilePermissions permissions) override;
-
-    std::future<UpdateResult> ReplaceExecutableFiles(
-        const std::filesystem::path& sourceDir,
-        const std::filesystem::path& targetDir) override;
-
-    bool FileExists(const std::filesystem::path& filePath) const override;
-    bool DirectoryExists(const std::filesystem::path& dirPath) const override;
-    size_t GetFileSize(const std::filesystem::path& filePath) const override;
-    std::filesystem::file_time_type GetLastWriteTime(const std::filesystem::path& filePath) const override;
-
-    std::vector<std::filesystem::path> GetExecutableFiles(
-        const std::filesystem::path& directory) const override;
-
-    UpdateResult GetLastError() const override;
+    bool CanWrite(const std::filesystem::path& path) override;
+    UpdateResult SetPermissions(
+        const std::filesystem::path& path,
+        int permissions) override;
 
 private:
     UpdateResult CopyFileInternal(
